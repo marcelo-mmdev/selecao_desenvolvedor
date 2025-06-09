@@ -1,0 +1,603 @@
+1 - Explique o conceito de boxing e unboxing em C#. Quais são as implicações de
+performance associadas a essas operações e como podem ser evitadas?
+
+Boxing é o processo de converter um tipo de valor (value type) — como int, double, bool, struct —
+em um tipo de referência (reference type), tipicamente um object ou uma interface que esse tipo implementa.
+Isso ocorre porque os tipos de valor são armazenados na stack (pilha) e os tipos de referência na heap.
+Quando você faz boxing, o valor é copiado da stack para a heap, encapsulado em um objeto.
+
+int numero = 10;
+object obj = numero; // Boxing
+
+Unboxing é o processo inverso, converter um tipo de referência de volta para um tipo de valor.
+É necessário realizar um cast explícito para fazer unboxing.
+
+object obj = 10;     // Boxing
+int numero = (int)obj; // Unboxing
+
+Boxing e unboxing envolvem, Alocação de memória na heap. Cópia de dados entre stack e heap.
+Conversão e verificação de tipo no unboxing, isso gera Sobrecarga de performance.
+Aumento na pressão do Garbage Collector (GC). Possível impacto em loops ou operações massivas.
+
+for (int i = 0; i < 100000; i++)
+{
+    object obj = i;     // Boxing em cada iteração
+    int num = (int)obj; // Unboxing
+}
+Esse código cria 100 mil objetos na heap desnecessariamente.
+Generics permitem trabalhar com tipos sem necessidade de boxing.
+Antes de generics (.NET 1.1), coleções como ArrayList armazenavam objetos, exigindo boxing de tipos de valor.
+
+Sem generics (box/unbox)
+
+ArrayList list = new ArrayList();
+list.Add(10);                // Boxing
+int num = (int)list[0];      // Unboxing
+
+Com generics (evita boxing):
+List<int> list = new List<int>();
+list.Add(10);                // Sem boxing
+int num = list[0];           // Sem unboxing
+
+Prefira interfaces e métodos genéricos para evitar boxing com structs.
+Exemplo: void Process<T>(T value) { }
+
+Evitar conversões desnecessárias para object ou interfaces não genéricas, Operação	O que faz	Impacto na performance
+Boxing	Value type → Reference type (object)	Cria objeto na heap
+Unboxing	Reference type (object) → Value type	Cast + cópia de dados
+Boxing e unboxing são operações custosas, principalmente em cenários de alto desempenho ou muitos objetos.
+O uso de generics, structs otimizados e APIs modernas reduz drasticamente esses problemas no C# moderno.
+***************************************************************************************************************************************************************************************
+2 - Descreva as diferenças entre struct e class em C#. Em que cenários você
+escolheria usar uma struct em vez de uma class?
+
+Em C#, struct e class são dois tipos fundamentais, mas com diferenças importantes de comportamento, semântica e performance.
+Quando usar struct em vez de class
+Você deve considerar usar struct quando:
+1. Imutabilidade é desejada
+structs devem representar objetos pequenos, imutáveis como DateTime, Point, Color.
+public struct Ponto
+{
+    public int X { get; }
+    public int Y { get; }
+
+    public Ponto(int x, int y)
+    {
+        X = x;
+        Y = y;
+    }
+}
+2. Uso intenso em performance crítica
+Ideal quando há muitas instâncias sendo criadas em loops ou cálculos (ex: jogos, física, gráficos).
+Evita alocação na heap e coleta de lixo (GC).
+3. Tamanho pequeno (<=16 bytes idealmente)
+Structs grandes podem gerar overhead na cópia por valor.
+Structs devem ser simples e leves.
+4. Representar valores como entidades únicas
+Ex: Vector2, Color, Currency, Angle, etc.
+Use struct quando... Use class quando...
+Representa valor pequeno e imutável	Representa objeto com identidade
+Precisa de desempenho (sem GC)	Precisa de herança, referência, null
+Não precisa de herança	Precisa de comportamentos complexos
+Operações simples e frequentes	Interações mais complexas ou longas
+
+*********************************************************************************************************************************************
+Questão 3: Qual das seguintes afirmações sobre delegates em C# é INCORRETA?
+a) Delegates são tipos seguros que encapsulam referências a métodos.
+b) Um delegate pode referenciar tanto métodos estáticos quanto métodos de
+instância.
+c) Delegates são primariamente utilizados para implementar interfaces de forma
+anônima.
+d) Eventos em C# são frequentemente implementados utilizando delegates.
+Resposta.
+a) Correta Delegates são type-safe e encapsulam referências a métodos com assinatura compatível.
+b) Correta Delegates podem apontar para métodos estáticos ou de instância.
+c) ❌ Incorreta Delegates não são usados para implementar interfaces. Isso é papel das classes anônimas ou expressões lambda com interfaces funcionais. Delegates são usados para encapsular métodos e trabalhar com callbacks/eventos.
+d) Correta Eventos em C# são baseados em delegates; eles usam delegates como tipo subjacente para notificação.
+
+delegate void Operacao(int x, int y);
+
+void Somar(int a, int b) => Console.WriteLine(a + b);
+Operacao op = Somar;
+op(3, 4); // Saída: 7
+🔹 Interface
+csharp
+Copiar
+Editar
+interface IOperacao {
+    void Executar(int x, int y);
+}
+
+class Soma : IOperacao {
+    public void Executar(int x, int y) => Console.WriteLine(x + y);
+}
+
+Use delegate para passar métodos como parâmetros, lidar com eventos ou callbacks.
+Use interface para definir comportamentos estruturados a serem implementados por diferentes classes.
+************************************************************************************************************************************************
+Questão 4: O que são Extension Methods em C#? Dê um exemplo prático de como você
+utilizaria um Extension Method para adicionar uma nova funcionalidade a um tipo existente
+sem modificar seu código-fonte original.
+
+Extension Methods permitem adicionar novos métodos a tipos existentes (como string, int, ou até classes customizadas) sem alterar o código original da classe nem criar uma subclasse.
+São métodos static definidos em uma static class.
+O primeiro parâmetro é precedido pela palavra-chave this, e indica o tipo a ser estendido.
+
+public static class StringExtensions
+{
+    public static int ContarPalavras(this string texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto))
+            return 0;
+
+        return texto.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+    }
+}
+
+string frase = "C# é uma linguagem poderosa";
+int total = frase.ContarPalavras(); // Resultado: 5
+
+Não precisa alterar a classe original.
+Código mais limpo, reutilizável e expressivo.
+Útil para trabalhar com APIs de terceiros ou tipos sealed como string, DateTime, etc.
+************************************************************************************************************************************************
+Questão 5: Discuta o uso de async e await em C# para programação assíncrona. Quais
+são os benefícios e como o fluxo de execução é gerenciado? Apresente um exemplo
+simples
+
+async e await em C#: Programação Assíncrona Simplificada
+async e await permitem escrever código assíncrono de forma legível, evitando callbacks complexos.
+São usados com métodos que retornam Task ou Task<T>.
+async marca o método como assíncrono.
+await aguarda a conclusão de uma Task, sem bloquear a thread.
+Benefícios
+Evita bloqueio de threads (ex: UI ou servidor Web).
+Melhora responsividade e escalabilidade.
+Fluxo parecido com código síncrono, facilitando manutenção.
+Fluxo de execução
+Método marcado com async começa a executar.
+Ao encontrar await, a execução pausa.
+O controle retorna ao chamador (liberando a thread).
+Quando a Task completa, a execução retoma do ponto do await.
+
+public async Task<string> BuscarDadosAsync()
+{
+    using HttpClient client = new HttpClient();
+    string resultado = await client.GetStringAsync("https://api.exemplo.com/dados");
+    return resultado;
+}
+
+// Uso:
+string dados = await BuscarDadosAsync();
+async/await simplificam o uso de tarefas assíncronas.
+Ideal para I/O-bound (ex: HTTP, arquivos, banco de dados).
+Evita bloqueios e melhora o desempenho em apps escaláveis.
+************************************************************************************************************************************************
+Questão 6: Descreva o padrão de projeto Factory Method. Apresente um cenário onde
+sua aplicação seria benéfica e como você o implementaria em C# para desacoplar a criação
+de objetos.
+
+O Factory Method é um padrão que desacopla a criação de objetos da sua implementação concreta, delegando a responsabilidade de instanciar objetos para subclasses ou fábricas.
+Fornece uma interface comum para criar objetos, mas permite que subclasses decidam qual classe instanciar.
+Quando seu código depende de uma interface ou classe base, mas não deve conhecer as classes concretas.
+Quando há variações de objetos a serem criados e isso precisa ser controlado de forma flexível e extensível.
+
+public interface ITransporte
+{
+    void Entregar();
+}
+Implementações concretas
+public class Caminhao : ITransporte
+{
+    public void Entregar() => Console.WriteLine("Entregando por caminhão");
+}
+
+public class Navio : ITransporte
+{
+    public void Entregar() => Console.WriteLine("Entregando por navio");
+}
+Factory Method (classe base)
+public abstract class Logistica
+{
+    public abstract ITransporte CriarTransporte();
+}
+Fábricas concretas
+
+public class LogisticaTerrestre : Logistica
+{
+    public override ITransporte CriarTransporte() => new Caminhao();
+}
+
+public class LogisticaMaritima : Logistica
+{
+    public override ITransporte CriarTransporte() => new Navio();
+}
+Uso
+Logistica logistica = new LogisticaTerrestre(); // ou LogisticaMaritima
+ITransporte transporte = logistica.CriarTransporte();
+transporte.Entregar();
+Desacoplamento entre o código cliente e as classes concretas.
+Facilidade de extensão para novos tipos de produto.
+Encapsula a lógica de criação, mantendo o código mais limpo.
+************************************************************************************************************************************************
+Questão 7: Explique o padrão Decorator. Como ele permite adicionar responsabilidades a
+objetos dinamicamente, e qual a sua diferença em relação à herança tradicional para
+estender funcionalidades?
+
+O padrão Decorator permite adicionar responsabilidades a um objeto dinamicamente, sem alterar sua estrutura original e sem modificar a classe base.
+Usa composição ao invés de herança.
+Objetos decoradores implementam a mesma interface do objeto original e o envolvem (wrap).
+Quando você precisa adicionar funcionalidades em tempo de execução.
+Quando quer evitar uma hierarquia extensa de subclasses para cada combinação de comportamento.
+Diferença para Herança Tradicional
+Decorator	Herança Tradicional
+Adiciona funcionalidades em tempo de execução	Adiciona funcionalidades em tempo de compilação
+Usa composição	Usa herança direta
+Mais flexível e extensível	Menos flexível, pode gerar muitas subclasses
+Interface base
+public interface ICafe
+{
+    string Descricao();
+    double Custo();
+}
+Implementação concreta
+public class CafeSimples : ICafe
+{
+    public string Descricao() => "Café simples";
+    public double Custo() => 5.0;
+}
+Decoradores
+class ComLeite : ICafe
+{
+    private ICafe _cafe;
+    public ComLeite(ICafe cafe) => _cafe = cafe;
+
+    public string Descricao() => _cafe.Descricao() + " + leite";
+    public double Custo() => _cafe.Custo() + 2.0;
+}
+
+public class ComChocolate : ICafe
+{
+    private ICafe _cafe;
+    public ComChocolate(ICafe cafe) => _cafe = cafe;
+
+    public string Descricao() => _cafe.Descricao() + " + chocolate";
+    public double Custo() => _cafe.Custo() + 3.0;
+}
+Uso
+ICafe cafe = new CafeSimples();
+cafe = new ComLeite(cafe);
+cafe = new ComChocolate(cafe);
+
+Console.WriteLine(cafe.Descricao()); // Café simples + leite + chocolate
+Console.WriteLine(cafe.Custo());     // 10.0
+
+Decorator = adicionar comportamento em tempo de execução.
+Evita subclasses desnecessárias.
+Promove abertura/extensão sem modificação.
+************************************************************************************************************************************************
+Questão 8: Qual padrão de projeto é mais adequado para garantir que uma classe tenha
+apenas uma instância e fornecer um ponto de acesso global a essa instância?
+a) Builder
+b) Singleton
+c) Prototype
+d) Facade
+
+Resposta correta: b) Singleton
+Garante que **uma classe tenha apenas uma única instância em todo o sistema e fornece um ponto de acesso global a ela.
+public class Configuracao
+{
+    private static readonly Configuracao _instancia = new Configuracao();
+
+    // Construtor privado impede instância externa
+    private Configuracao() { }
+
+    public static Configuracao Instancia => _instancia;
+}
+Uso:
+var config = Configuracao.Instancia;
+Outras opções incorretas
+a) Builder: constrói objetos complexos passo a passo.
+c) Prototype: clona objetos existentes.
+d) Facade: fornece uma interface simplificada para um subsistema.
+************************************************************************************************************************************************
+Questão 9: O padrão Strategy é frequentemente usado para encapsular algoritmos
+intercambiáveis. Descreva um problema que você resolveria com o padrão Strategy e como
+as diferentes estratégias seriam gerenciadas pela classe de contexto
+
+Permite encapsular algoritmos intercambiáveis em classes separadas e alterá-los em tempo de execução sem modificar o código do cliente.
+Imagine um sistema de cálculo de frete que muda conforme o tipo de entrega:
+Frete padrão (PAC)
+Frete expresso (Sedex)
+Frete internacional
+Em vez de usar if/else ou switch, usamos Strategy para manter o código flexível e extensível.
+Interface da estratégia
+
+public interface ICalculoFrete
+{
+    decimal Calcular(decimal peso);
+}
+Estratégias concretas
+public class FretePadrao : ICalculoFrete
+{
+    public decimal Calcular(decimal peso) => peso * 5;
+}
+
+public class FreteExpresso : ICalculoFrete
+{
+    public decimal Calcular(decimal peso) => peso * 10;
+}
+
+public class FreteInternacional : ICalculoFrete
+{
+    public decimal Calcular(decimal peso) => peso * 20 + 50;
+}
+Classe de contexto
+public class ServicoFrete
+{
+    private ICalculoFrete _estrategia;
+
+    public ServicoFrete(ICalculoFrete estrategia) => _estrategia = estrategia;
+
+    public void DefinirEstrategia(ICalculoFrete estrategia) => _estrategia = estrategia;
+
+    public decimal CalcularFrete(decimal peso) => _estrategia.Calcular(peso);
+}
+Uso
+var servico = new ServicoFrete(new FretePadrao());
+Console.WriteLine(servico.CalcularFrete(10)); // 50
+servico.DefinirEstrategia(new FreteExpresso());
+Console.WriteLine(servico.CalcularFrete(10)); // 100
+Evita condicionais extensos.
+Facilita a manutenção e extensão (basta criar nova estratégia).
+Permite mudar o algoritmo em tempo de execução.
+
+************************************************************************************************************************************************
+Questão 10: O Princípio da Responsabilidade Única (SRP) afirma que uma classe deve ter
+apenas um motivo para mudar. Como a violação desse princípio pode impactar a
+manutenibilidade e testabilidade do código? Dê um exemplo em C#.
+
+Princípio da Responsabilidade Única (Single Responsibility Principle)
+Uma classe deve ter apenas um motivo para mudar, ou seja, uma única responsabilidade.
+Baixa coesão: a classe faz coisas demais, ficando difícil de entender.
+Alta fragilidade: mudar um comportamento pode quebrar outros.
+Dificuldade para testar: classes grandes com múltiplas responsabilidades exigem testes complexos e com muitos mocks/stubs.
+Baixa reutilização: responsabilidades misturadas tornam o reaproveitamento difícil.
+Exemplo de violação (ruim)
+
+public class Relatorio
+{
+    public string GerarConteudo()
+    {
+        return "Dados do relatório...";
+    }
+
+    public void SalvarEmArquivo(string conteudo)
+    {
+        File.WriteAllText("relatorio.txt", conteudo);
+    }
+
+    public void EnviarEmail(string conteudo)
+    {
+        // Lógica para envio de e-mail
+    }
+}
+A classe gera conteúdo, salva em arquivo e envia e-mail — três responsabilidades distintas.
+Qualquer alteração em I/O, e-mail ou conteúdo impacta essa única classe.
+Refatorado com SRP
+public class GeradorRelatorio
+{
+    public string GerarConteudo() => "Dados do relatório...";
+}
+public class RelatorioArquivo
+{
+    public void Salvar(string conteudo) => File.WriteAllText("relatorio.txt", conteudo);
+}
+public class EnviadorEmail
+{
+    public void Enviar(string conteudo) { /* lógica de envio */ }
+}
+Agora, cada classe tem uma única responsabilidade, podendo ser testada e modificada de forma isolada.
+************************************************************************************************************************************************
+Questão 11: Explique o Princípio Aberto/Fechado (OCP). Como podemos projetar classes
+em C# que sejam abertas para extensão, mas fechadas para modificação, utilizando, por
+exemplo, herança ou composição com interfaces?
+
+“Software deve estar aberto para extensão, mas fechado para modificação.”
+Ou seja, podemos estender o comportamento de uma classe sem alterar seu código-fonte original.
+Usando herança: criar classes base estáveis e estender via subclasses.
+Usando interfaces e composição: programar para abstrações, permitindo trocar implementações sem alterar código cliente.
+Exemplo usando interfaces e composição
+public interface IDesconto
+{
+    decimal Aplicar(decimal valor);
+}
+
+public class DescontoNatal : IDesconto
+{
+    public decimal Aplicar(decimal valor) => valor * 0.9m; // 10% de desconto
+}
+
+public class DescontoAnoNovo : IDesconto
+{
+    public decimal Aplicar(decimal valor) => valor * 0.8m; // 20% de desconto
+}
+
+public class CalculadoraPreco
+{
+    private readonly IDesconto _desconto;
+
+    public CalculadoraPreco(IDesconto desconto)
+    {
+        _desconto = desconto;
+    }
+
+    public decimal Calcular(decimal valor) => _desconto.Aplicar(valor);
+}
+Uso:
+var desconto = new DescontoNatal();
+var calc = new CalculadoraPreco(desconto);
+Console.WriteLine(calc.Calcular(100)); // 90
+Para adicionar um novo desconto, criamos uma nova classe que implementa IDesconto — sem modificar CalculadoraPreco.
+Mantenha classes estáveis (fechadas para modificação).
+Permita extensão via subclasses ou novas implementações de interfaces.
+Promove código mais seguro, testável e escalável.
+************************************************************************************************************************************************
+Questão 12: Qual a diferença entre UNION e UNION ALL em SQL? Em que situações a
+performance pode ser afetada pela escolha entre um e outro?
+
+Diferença entre UNION e UNION ALL em SQL
+Característica	UNION	UNION ALL
+Combina resultados	Sim	Sim
+Remove duplicatas	Sim (elimina linhas duplicadas)	Não (mantém todas as linhas)
+Performance	Mais lenta, pois faz comparação extra para eliminar duplicatas	Mais rápida, pois simplesmente concatena resultados
+Uso comum	Quando você precisa de resultados únicos	Quando quer todos os registros, inclusive duplicados
+UNION exige um passo adicional de ordenar e comparar as linhas para remover duplicatas, o que pode ser custoso em tabelas grandes.
+UNION ALL não faz essa operação extra, então é mais rápido e consome menos recursos.
+Use UNION quando precisar garantir que o resultado não contenha duplicatas.
+Use UNION ALL quando tiver certeza que as consultas não retornam duplicatas ou quando duplicatas são desejadas, priorizando performance.
+************************************************************************************************************************************************
+Questão 13: Em PL/SQL (Oracle 10g), explique o que são Packages. Quais são as
+vantagens de agrupar procedures, functions, types e variáveis em um package?
+
+
+Um Package é um agrupamento lógico de procedures, functions, tipos (types), variáveis, constantes e cursores relacionados.
+É dividido em duas partes:
+Specification (spec): interface pública, declara os elementos visíveis externamente.
+Body: implementação das procedures, functions e detalhes internos.
+Organização e modularização
+Agrupa código relacionado, facilitando a manutenção e entendimento.
+Encapsulamento
+Esconde detalhes da implementação no corpo do package, expondo só o que é necessário.
+Reuso de código
+Permite reutilizar funções/procedures comuns em vários programas.
+Performance
+ackages são carregados na memória uma única vez e ficam disponíveis para múltiplas chamadas
+Reduz overhead de compilação e melhora desempenho.
+Controle de acesso
+É possível definir que apenas alguns elementos do package sejam públicos.
+Manutenção facilitada
+Atualizações em procedures internas não afetam programas que usam a spec, desde que a interface não mude.
+
+CREATE OR REPLACE PACKAGE minha_biblioteca IS
+  PROCEDURE saudacao(nome IN VARCHAR2);
+END minha_biblioteca;
+/
+
+CREATE OR REPLACE PACKAGE BODY minha_biblioteca IS
+  PROCEDURE saudacao(nome IN VARCHAR2) IS
+  BEGIN
+    DBMS_OUTPUT.PUT_LINE('Olá, ' || nome);
+  END saudacao;
+END minha_biblioteca;
+/
+
+************************************************************************************************************************************************
+Questão 14: No Oracle 10g, qual das seguintes opções é a melhor forma de lidar com um
+erro específico (ex: NO_DATA_FOUND) dentro de um bloco PL/SQL? 
+) Usar um IF statement para checar SQLCODE após cada DML.
+b) Declarar uma exceção nomeada e tratá-la na seção EXCEPTION WHEN.
+c) Usar GOTO para pular para uma seção de tratamento de erro.
+d) Permitir que o erro se propague e seja tratado pela aplicação cliente.
+
+Resposta correta: b) Declarar uma exceção nomeada e tratá-la na seção EXCEPTION WHEN.
+
+Em PL/SQL, o método correto e estruturado para tratar erros específicos (como NO_DATA_FOUND) é usar a seção EXCEPTION com cláusulas WHEN para capturar e tratar essas exceções.
+BEGIN
+  SELECT nome INTO v_nome FROM clientes WHERE id = 10;
+
+EXCEPTION
+  WHEN NO_DATA_FOUND THEN
+    DBMS_OUTPUT.PUT_LINE('Cliente não encontrado.');
+END;
+Por que as outras opções são inadequadas?
+a) IF com SQLCODE: é possível, mas não é recomendado pois deixa o código confuso e repetitivo.
+
+c) GOTO: uso de GOTO é considerado má prática e não é necessário para tratamento de erros.
+
+d) Permitir que o erro se propague: nem sempre desejável, pois pode causar falhas inesperadas; é melhor tratar erros conhecidos diretamente no PL/SQL.
+************************************************************************************************************************************************
+Questão 15: O que são triggers de banco de dados no Oracle? Descreva um cenário onde
+você utilizaria um trigger AFTER INSERT em uma tabela para manter a integridade
+referencial ou registrar auditoria.
+
+Triggers são blocos de código PL/SQL que disparam automaticamente em resposta a eventos DML (INSERT, UPDATE, DELETE) ou DDL em tabelas ou views.
+Executam antes ou depois da operação ocorrer (BEFORE ou AFTER).
+Trigger AFTER INSERT
+Executa após uma inserção ser confirmada na tabela
+Usado para ações dependentes da inserção bem-sucedida.
+Registrar auditoria automaticamente após inserir um registro na tabela VENDAS:
+Toda vez que uma nova venda é inserida, grava-se um registro na tabela AUDITORIA_VENDAS com dados da operação.
+CREATE OR REPLACE TRIGGER trg_audit_vendas
+AFTER INSERT ON vendas
+FOR EACH ROW
+BEGIN
+  INSERT INTO auditoria_vendas (venda_id, data_insercao, usuario)
+  VALUES (:NEW.id, SYSDATE, USER);
+END;
+/
+Outros usos comuns de triggers AFTER INSERT
+Manter integridade referencial em casos onde constraints não cobrem a regra.
+Atualizar dados em tabelas relacionadas.
+Disparar notificações ou atualizações de cache.
+************************************************************************************************************************************************
+Questão 16: Escreva uma consulta SQL para selecionar o nome dos departamentos
+(Departamentos.NomeDepto) e a média salarial (Funcionarios.Salario) dos
+funcionários de cada departamento, mas apenas para os departamentos cuja média salarial
+seja superior a R$ 5000. Assuma as tabelas:
+Departamentos (IDDepto, NomeDepto)
+Funcionarios (IDFunc, NomeFunc, IDDepto, Salario)
+
+SELECT d.NomeDepto, AVG(f.Salario) AS MediaSalarial
+FROM Departamentos d
+JOIN Funcionarios f ON d.IDDepto = f.IDDepto
+GROUP BY d.NomeDepto
+HAVING AVG(f.Salario) > 5000;
+Explicação rápida:
+Fazemos o JOIN entre Departamentos e Funcionarios pela chave IDDepto.
+Agrupamos por departamento (GROUP BY d.NomeDepto).
+Calculamos a média salarial com AVG(f.Salario).
+Filtramos os grupos para mostrar somente os departamentos cuja média salarial é maior que 5000 usando HAVING.
+Se precisar, posso ajudar a adaptar para Oracle PL/SQL ou incluir ordenação. Quer?
+Para Oracle PL/SQL, a consulta continua a mesma, já que PL/SQL suporta comandos SQL padrão. Vou adicionar uma ordenação decrescente pela média salarial, que costuma ser útil:
+SELECT d.NomeDepto, AVG(f.Salario) AS MediaSalarial
+FROM Departamentos d
+JOIN Funcionarios f ON d.IDDepto = f.IDDepto
+GROUP BY d.NomeDepto
+HAVING AVG(f.Salario) > 5000
+ORDER BY MediaSalarial DESC;
+Como usar em PL/SQL (exemplo simples de bloco anônimo):
+BEGIN
+  FOR rec IN (
+    SELECT d.NomeDepto, AVG(f.Salario) AS MediaSalarial
+    FROM Departamentos d
+    JOIN Funcionarios f ON d.IDDepto = f.IDDepto
+    GROUP BY d.NomeDepto
+    HAVING AVG(f.Salario) > 5000
+    ORDER BY MediaSalarial DESC
+  ) LOOP
+    DBMS_OUTPUT.PUT_LINE('Depto: ' || rec.NomeDepto || ', Média: ' || rec.MediaSalarial);
+  END LOOP;
+END;
+/
+Aqui está um exemplo de procedure PL/SQL que recebe como parâmetro o valor mínimo da média salarial e retorna os departamentos com média salarial superior a esse valor:
+CREATE OR REPLACE PROCEDURE listar_departamentos_com_media(
+  p_media_minima IN NUMBER
+) IS
+BEGIN
+  FOR rec IN (
+    SELECT d.NomeDepto, AVG(f.Salario) AS MediaSalarial
+    FROM Departamentos d
+    JOIN Funcionarios f ON d.IDDepto = f.IDDepto
+    GROUP BY d.NomeDepto
+    HAVING AVG(f.Salario) > p_media_minima
+    ORDER BY MediaSalarial DESC
+  ) LOOP
+    DBMS_OUTPUT.PUT_LINE('Departamento: ' || rec.NomeDepto || ', Média Salarial: ' || TO_CHAR(rec.MediaSalarial, 'FM9999990.00'));
+  END LOOP;
+END;
+/
+BEGIN
+  listar_departamentos_com_media(5000);
+END;
+/
